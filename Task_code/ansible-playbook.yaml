@@ -1,0 +1,36 @@
+---
+- name: Install Nginx
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+    - name: Start Nginx service
+      service:
+        name: nginx
+        state: started
+
+---
+- name: Create and delete a file
+  hosts: all
+  become: yes
+  tasks:
+    - name: Create a file
+      file:
+        path: /tmp/file.txt
+        state: touch
+    - name: Add content to the file
+      lineinfile:
+        path: /tmp/file.txt
+        line: "Hello, this is my sample file content."
+    - name: Delete the file
+      file:
+        path: /tmp/file.txt
+        state: absent
+
+
+#Ansible ad-hoc commands that create and delete a file without using a playbook
+#ansible all -m file -a "path=~/tmp-file state=touch" ....... uses the file module with the -m flag to create a file named tmp-file in the home directory (~) of all hosts
+#ansible all -m file -a "path=~/tmp-file state=absent" ..... uses the file module to delete the tmp-file from the home directory of all hosts.The state=absent ensures that the file is removed

@@ -1,0 +1,90 @@
+image: docker:latest
+stages:
+  - build
+  - test
+  - scan
+  - deploy
+
+variables:
+  CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest  
+
+build:
+  stage: build
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CONTAINER_RELEASE_IMAGE .
+    - docker push $CONTAINER_RELEASE_IMAGE
+  
+sonarqube-check:
+  image: 
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  
+    GIT_DEPTH: "0"  
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script: 
+    - sonar-scanner
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Jobs/SAST-IaC.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+container-scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  variables:
+    CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+    CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+
+  script:
+    - trivy image --format=json --output=container-scanning-report.json $CONTAINER_RELEASE_IMAGE
+    - trivy image --format cyclonedx --output sbom.json $CONTAINER_RELEASE_IMAGE
+  allow_failure: true
+  artifacts:
+    reports:
+      container_scanning: container-scanning-report.json 
+      cyclonedx: sbom.json
+
+deploy-copyfile:
+  stage: deploy
+  tags:
+   - prod
+  only:
+   - main
+  before_script:
+    - apk update && apk add openssh-client bash rsync
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    
+  script:
+    - mkdir -p ~/.ssh
+    - echo "${SSH_HOST_KEY1}" > ~/.ssh/known_hosts
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+    - rsync -vv -rz --checksum --delete . root@ip-address:/var/www/html/dashboard
+  environment:
+    name: stage
+    url: https://main.test.com
+
+run-docker:
+  stage: deploy
+  only:
+   - stage
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker pull $CONTAINER_RELEASE_IMAGE
+    - docker container rm -f test || true
+    - docker run -d -p 9010:9010 --name test --restart unless-stopped $CONTAINER_RELEASE_IMAGE
+  environment:
+    name: stage
+    url: https://stage.test.com
