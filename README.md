@@ -220,8 +220,10 @@ The following playbook will create file, delete file in dev servers and install 
     state: started
 
 Ansible ad-hoc commands that create and delete a file without using a playbook
-ansible all -m file -a "path=~/tmp-file state=touch" ....... uses the file module with the -m flag to create a file named tmp-file in the home directory (~) of all hosts
-ansible all -m file -a "path=~/tmp-file state=absent" ..... uses the file module to delete the tmp-file from the home directory of all hosts.The state=absent ensures that the file is removed
+
+ansible all -m file -a "path=~/tmp-file state=touch". uses the file module with the -m flag to create a file named tmp-file in the home directory (~) of all hosts
+
+ansible all -m file -a "path=~/tmp-file state=absent". uses the file module to delete the tmp-file from the home directory of all hosts.The state=absent ensures that the file is removed
 
 Task 5)
 Amazon CloudWatch is the best monitoring tool for tracking metrics, logs, setting alarms for specific activities, and taking actions based on those alarms. It offers a clear and descriptive dashboard where all metrics, dashboards, and alarms can be accessed.
