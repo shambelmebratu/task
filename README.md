@@ -1,3 +1,6 @@
+check the document from the link https://docs.google.com/document/d/13uOZj42dKTi1_nUHV6VmPIbDxpU6NeEb8Tu-f-FLUNs/edit?usp=sharing or from teh pdf I attached in this repo
+
+
 Task 1) 
 refer my github repository 
 Refer my deploy.sh file from the github repo 
